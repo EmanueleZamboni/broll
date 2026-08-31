@@ -77,10 +77,18 @@ jobs:
         if: steps.check.outputs.ok == 'true'
         run: npx wrangler d1 execute "$DB_NAME" --remote --file=./schema.sql
 
+      # Un valore in [vars] sovrascriverebbe il secret a ogni deploy, quindi si
+      # toglie. Il controllo sta nello script: negli "if" di step il contesto
+      # "secrets" non è ammesso e il workflow non parte nemmeno.
       - name: Se il codice vacanza arriva dai secret, toglilo da wrangler.toml
-        # Un valore in [vars] sovrascriverebbe il secret a ogni deploy.
-        if: steps.check.outputs.ok == 'true' && secrets.ROOM_CODE != ''
-        run: sed -i '/^ROOM_CODE = /d' wrangler.toml
+        if: steps.check.outputs.ok == 'true'
+        env:
+          ROOM_CODE: ${{ secrets.ROOM_CODE }}
+        run: |
+          if [ -n "${ROOM_CODE:-}" ]; then
+            sed -i '/^ROOM_CODE = /d' wrangler.toml
+            echo "Il codice vacanza arriva dai secret."
+          fi
 
       - name: Deploy
         if: steps.check.outputs.ok == 'true'
