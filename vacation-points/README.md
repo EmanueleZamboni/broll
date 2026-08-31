@@ -19,7 +19,7 @@ della larghezza di un cellulare.
 | `src/index.js` | Il Worker: login, API dei punti, serve il sito |
 | `public/` | Il sito: `index.html`, `style.css`, `app.js` |
 | `public/avatars/` | Le foto profilo (vedi il README lì dentro) |
-| `schema.sql` | Le due tabelle: `players` e `events` |
+| `schema.sql` | La tabella `events`, l'unica che c'è |
 | `wrangler.toml` | Configurazione Cloudflare |
 
 I punteggi stanno su **D1** (il database SQLite di Cloudflare), quindi sono gli
@@ -27,17 +27,60 @@ stessi per tutti e sopravvivono a chiusure e riavvii. Ogni telefono ricontrolla
 il punteggio ogni 2,5 secondi: se Serena dà un punto a Mario, lo vedi comparire
 anche tu.
 
+## Come sono tenuti i punti (perché non si perdono)
+
+Da nessuna parte esiste un "totale" che viene sovrascritto. Esiste **un registro
+in cui si può soltanto aggiungere una riga**: *+1 a Greta*, *−1 a Mario*, e così
+via. Il punteggio è la somma di quelle righe, ricalcolata a ogni lettura.
+
+Cosa ci si guadagna:
+
+- **Due telefoni che segnano nello stesso istante non si sovrascrivono.** Nessuno
+  legge il totale, lo cambia e lo riscrive: si accodano due righe e finisce lì.
+  Provato: 20 richieste in parallelo, 20 punti, nessuno perso.
+- **Un totale non può restare sbagliato.** Non essendo memorizzato, si ricalcola
+  ogni volta dallo storico.
+- **"Azzera tutto" non cancella niente.** Scrive una riga di tipo `reset` e la
+  somma riparte da lì. Tutto quello che è successo prima resta nel registro.
+- **Il tasto ⤓ Backup** (in fondo alla schermata) scarica l'intero registro in un
+  file JSON: azzeramenti compresi, dal primo punto in poi. Fatelo ogni tanto.
+
+Sotto c'è comunque la rete di Cloudflare: D1 tiene i dati replicati e ha il
+**Time Travel**, che permette di riportare il database a un qualsiasi istante
+degli ultimi 30 giorni (`npx wrangler d1 time-travel restore vacanza-cup
+--timestamp=...`).
+
 ## Come si usa
 
 1. Apri il sito, scegli chi sei e digita il **codice vacanza** (uno solo, uguale
    per tutti — niente password da ricordare). Resti dentro per 60 giorni.
 2. **+** dà un punto, **−** lo toglie. Puoi darli a chiunque, anche a te stesso.
 3. Chi è primo si prende la corona. In caso di pari merito la corona sparisce.
-4. **Annulla ultimo** rimedia all'errore appena fatto.
-   **Azzera tutto** riporta tutti a zero (richiede il codice vacanza).
+4. **Annulla ultimo** rimedia all'errore appena fatto (scrive il punto opposto).
+   **Azzera tutto** fa ripartire la classifica da zero senza cancellare lo
+   storico (richiede il codice vacanza).
+   **⤓ Backup** scarica tutto il registro in un file.
 5. 🔊 accende e spegne i suoni.
 
-## Metterlo online (una volta sola, ~5 minuti)
+## Metterlo online dal telefono (senza installare niente)
+
+Nel repo c'è `.github/workflows/deploy-vacanza-cup.yml`: fa tutto GitHub.
+
+1. Su **dash.cloudflare.com** → *My Profile → API Tokens → Create Token*.
+   Parti dal modello **Edit Cloudflare Workers** e assicurati che fra i permessi
+   ci sia anche **D1 → Edit** (aggiungilo se manca). Copia il token.
+2. Su GitHub, nel repo: *Settings → Secrets and variables → Actions →
+   New repository secret*, e aggiungi:
+   - `CLOUDFLARE_API_TOKEN` — il token appena creato (obbligatorio)
+   - `CLOUDFLARE_ACCOUNT_ID` — l'Account ID, se hai più di un account Cloudflare
+   - `ROOM_CODE` — il codice per entrare (se manca resta `vacanza`)
+   - `AUTH_SECRET` — una stringa lunga a caso, per firmare le sessioni
+3. *Actions → Deploy Vacanza Cup → Run workflow*.
+
+Il workflow crea il database se non c'è, ci mette lo schema, fa il deploy e
+scrive il link nel riepilogo del run. Senza token non fallisce: dice cosa manca.
+
+## Oppure dal computer (una volta sola, ~5 minuti)
 
 Serve un account Cloudflare gratuito e Node installato.
 
@@ -91,6 +134,9 @@ I nomi stanno in due punti e devono restare uguali:
 
 - `src/index.js` → `const PLAYERS = [...]`
 - `public/app.js` → `const PLAYERS = [...]` e `const COLORS = {...}`
+
+Cambiare un nome non fa sparire i punti già assegnati: restano nel registro
+intestati al nome vecchio, quindi conviene farlo prima di cominciare.
 
 ## Sicurezza, in due righe
 

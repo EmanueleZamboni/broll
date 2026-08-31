@@ -691,13 +691,22 @@ $('#undo-btn').addEventListener('click', async () => {
   } catch { toast('Non sono riuscito ad annullare'); }
 });
 
+// Scarica tutto il registro: una copia da tenersi da parte.
+$('#backup-btn').addEventListener('click', () => {
+  sfx.click();
+  location.href = '/api/export';
+});
+
 $('#reset-btn').addEventListener('click', async () => {
-  const code = prompt('Azzeri TUTTI i punteggi. Scrivi il codice vacanza per confermare:');
+  const code = prompt(
+    'Riparto da 0-0-0-0. Lo storico non viene cancellato (resta nel backup).\n'
+    + 'Scrivi il codice vacanza per confermare:'
+  );
   if (!code) return;
   try {
     apply(await api('/api/reset', { method: 'POST', body: JSON.stringify({ code }) }));
     state.booted = true;
-    toast('Punteggi azzerati. Si riparte da zero!');
+    toast('Si riparte da zero. Lo storico è conservato.');
     sfx.start();
   } catch (ex) {
     toast(ex.message || 'Reset non riuscito');
