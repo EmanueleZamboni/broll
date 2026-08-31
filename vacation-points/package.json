@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:create": "wrangler d1 create vacanza-cup",
-    "db:init": "wrangler d1 execute vacanza-cup --remote --file=./schema.sql",
-    "db:init:local": "wrangler d1 execute vacanza-cup --local --file=./schema.sql"
+    "db:create": "wrangler d1 create vacanza",
+    "db:init": "wrangler d1 execute vacanza --remote --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute vacanza --local --file=./schema.sql"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

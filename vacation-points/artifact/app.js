@@ -105,6 +105,55 @@ let saveMode = 'files';    // 'files' → salva senza ricaricare | 'html' | 'off
 let saveTimer = null;
 let savePending = false;
 
+// Ogni punto porta un identificativo suo: serve per accorgersi, alla
+// riapertura, se è finito davvero nel salvataggio o se si è perso per strada.
+const newId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+
+/* --- rete di sicurezza contro i punti persi -------------------------------
+   Quando due telefoni salvano nello stesso istante, uno dei due perde: la
+   piattaforma tiene la versione arrivata prima e ricarica gli altri. Per non
+   buttare via quel punto lo si mette da parte nel telefono PRIMA di salvare;
+   alla riapertura, se non compare nello storico, viene rimesso. */
+const PENDING_KEY = 'vc_pending';
+const PENDING_TTL = 5 * 60 * 1000;
+
+function readPending() {
+  try { return JSON.parse(sessionStorage.getItem(PENDING_KEY)) || []; }
+  catch { return []; }
+}
+function writePending(list) {
+  try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(list)); }
+  catch { /* niente sessionStorage: si va avanti senza rete */ }
+}
+function rememberPending(ev) {
+  const now = Date.now();
+  writePending(readPending().filter((e) => now - e.ts < PENDING_TTL).concat(ev));
+}
+
+// Chiamata all'apertura: rimette i punti che non sono arrivati a destinazione.
+function replayPending() {
+  const now = Date.now();
+  const recenti = readPending().filter((e) => now - e.ts < PENDING_TTL);
+  const arrivati = new Set(state.log.map((e) => e.id).filter(Boolean));
+  const persi = recenti.filter((e) => !arrivati.has(e.id));
+
+  writePending(persi);
+  if (!persi.length) return;
+
+  persi.forEach((e) => {
+    state.points[e.target] = (state.points[e.target] || 0) + e.delta;
+    state.log.unshift(e);
+  });
+  state.log = state.log.slice(0, 40);
+  state.v++;
+  sortPlayers();
+  render({ animate: false });
+  toast(persi.length === 1
+    ? 'Recuperato 1 punto che non era stato salvato'
+    : `Recuperati ${persi.length} punti che non erano stati salvati`, 3500);
+  save();
+}
+
 function snapshot() {
   return { v: state.v, points: { ...state.points }, log: state.log.slice(0, 40) };
 }
@@ -653,14 +702,16 @@ function addPoint(target, delta, event) {
   }
 
   const wasLeader = currentLeader();
+  const ev = { id: newId(), actor: state.me, target, delta, ts: Date.now() };
   state.points[target] += delta;
-  state.log.unshift({ actor: state.me, target, delta, ts: Date.now() });
+  state.log.unshift(ev);
   state.log = state.log.slice(0, 40);
   state.v++;
   sortPlayers();
   render();
   celebrate(wasLeader);
   showLastLog();
+  rememberPending(ev);     // prima di salvare, non dopo
   save();
 }
 
@@ -763,13 +814,16 @@ function wireUp() {
     if (state.readonly) { toast('Sola lettura: non puoi annullare'); return; }
     sfx.click();
     const wasLeader = currentLeader();
-    state.points[last.target] -= last.delta;
-    state.log.shift();
+    const ev = { id: newId(), actor: state.me, target: last.target, delta: -last.delta, ts: Date.now() };
+    state.points[last.target] += ev.delta;
+    state.log.unshift(ev);
+    state.log = state.log.slice(0, 40);
     state.v++;
     sortPlayers();
     render();
     celebrate(wasLeader);
     toast(`Annullato: ${last.delta > 0 ? '+1' : '−1'} a ${last.target}`);
+    rememberPending(ev);
     save();
   });
 
@@ -779,6 +833,7 @@ function wireUp() {
     PLAYERS.forEach((n) => { state.points[n] = 0; });
     state.log = [];
     state.v++;
+    writePending([]);
     sortPlayers();
     state.booted = false;
     render();
@@ -802,5 +857,9 @@ function wireUp() {
   try {
     art = window.claude && window.claude.use ? await window.claude.use('artifact') : null;
   } catch { art = null; }
-  if (!art) note('Qui i punteggi non vengono salvati: apri il link dell\'artifact per tenerli.');
+  if (!art) {
+    note('Qui i punteggi non vengono salvati: apri il link dell\'artifact per tenerli.');
+    return;
+  }
+  replayPending();
 })();

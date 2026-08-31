@@ -16,7 +16,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      DB_NAME: vacanza-cup
+      DB_NAME: vacanza
 
     steps:
       - uses: actions/checkout@v4
@@ -36,8 +36,7 @@ jobs:
               echo "*Settings → Secrets and variables → Actions → New repository secret*,"
               echo "poi rilancia questo workflow."
               echo
-              echo "Facoltativi: \`CLOUDFLARE_ACCOUNT_ID\` (serve se hai più account),"
-              echo "\`ROOM_CODE\` (il codice per entrare) e \`AUTH_SECRET\` (una stringa lunga a caso)."
+              echo "È l'unica cosa obbligatoria. Il resto se lo arrangia il workflow."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
@@ -71,7 +70,7 @@ jobs:
             exit 1
           fi
           echo "Database $DB_NAME -> $ID"
-          sed -i "s/INCOLLA_QUI_L_ID_DEL_TUO_D1/$ID/" wrangler.toml
+          sed -i "s/INCOLLA_QUI_L_ID_DEL_DATABASE/$ID/" wrangler.toml
 
       - name: Crea le tabelle (le istruzioni sono IF NOT EXISTS, si può rilanciare)
         if: steps.check.outputs.ok == 'true'
@@ -99,22 +98,33 @@ jobs:
           URL="$(grep -oE 'https://[a-zA-Z0-9._-]+\.workers\.dev' deploy.log | head -1 || true)"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 
-      - name: Imposta i segreti sul Worker
+      - name: Segreti del Worker (l'unica cosa da fare a mano è il token)
+        id: segreti
         if: steps.check.outputs.ok == 'true'
         env:
           ROOM_CODE: ${{ secrets.ROOM_CODE }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          # Il codice per entrare: se non lo si è impostato resta quello di default.
           if [ -n "${ROOM_CODE:-}" ]; then
             printf '%s' "$ROOM_CODE" | npx wrangler secret put ROOM_CODE
+            echo "codice=dai secret" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::Nessun secret ROOM_CODE: resta il codice di default 'vacanza'. Cambialo."
+            echo "codice=vacanza (predefinito)" >> "$GITHUB_OUTPUT"
           fi
+
+          # La chiave che firma le sessioni non deve chiederla a nessuno: se non
+          # c'è già sul Worker, se ne genera una e resta quella per sempre.
+          GIA_PRESENTE=$(npx wrangler secret list --json 2>/dev/null | jq -r '.[]?.name' | grep -Fxc 'AUTH_SECRET')
           if [ -n "${AUTH_SECRET:-}" ]; then
             printf '%s' "$AUTH_SECRET" | npx wrangler secret put AUTH_SECRET
+            echo "Chiave delle sessioni presa dai secret."
+          elif [ "${GIA_PRESENTE:-0}" = "0" ]; then
+            openssl rand -hex 32 | tr -d '\n' | npx wrangler secret put AUTH_SECRET
+            echo "Chiave delle sessioni generata adesso (resta questa)."
           else
-            echo "::warning::Nessun secret AUTH_SECRET: le sessioni usano una chiave di default."
+            echo "Chiave delle sessioni già presente, lasciata com'è."
           fi
 
       - name: Scrivi il link nel riepilogo
@@ -128,4 +138,8 @@ jobs:
             else
               echo "Deploy fatto. Il link è nel log dello step \"Deploy\"."
             fi
+            echo
+            echo "Codice per entrare: ${{ steps.segreti.outputs.codice }}"
+            echo
+            echo "Manda il link agli altri tre: aprono, scelgono chi sono, scrivono il codice."
           } >> "$GITHUB_STEP_SUMMARY"

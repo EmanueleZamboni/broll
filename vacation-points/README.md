@@ -48,7 +48,7 @@ Cosa ci si guadagna:
 
 Sotto c'è comunque la rete di Cloudflare: D1 tiene i dati replicati e ha il
 **Time Travel**, che permette di riportare il database a un qualsiasi istante
-degli ultimi 30 giorni (`npx wrangler d1 time-travel restore vacanza-cup
+degli ultimi 30 giorni (`npx wrangler d1 time-travel restore vacanza
 --timestamp=...`).
 
 ## Come si usa
@@ -62,23 +62,35 @@ degli ultimi 30 giorni (`npx wrangler d1 time-travel restore vacanza-cup
    storico (richiede il codice vacanza).
 5. 🔊 accende e spegne i suoni.
 
-## Metterlo online dal telefono (senza installare niente)
+## Metterlo online dal telefono (senza copiare nessun token)
 
-Nel repo c'è `.github/workflows/deploy-vacanza-cup.yml`: fa tutto GitHub.
+Si lascia fare tutto a Cloudflare, che si collega da solo al repo GitHub.
 
-1. Su **dash.cloudflare.com** → *My Profile → API Tokens → Create Token*.
-   Parti dal modello **Edit Cloudflare Workers** e assicurati che fra i permessi
-   ci sia anche **D1 → Edit** (aggiungilo se manca). Copia il token.
-2. Su GitHub, nel repo: *Settings → Secrets and variables → Actions →
-   New repository secret*, e aggiungi:
-   - `CLOUDFLARE_API_TOKEN` — il token appena creato (obbligatorio)
-   - `CLOUDFLARE_ACCOUNT_ID` — l'Account ID, se hai più di un account Cloudflare
-   - `ROOM_CODE` — il codice per entrare (se manca resta `vacanza`)
-   - `AUTH_SECRET` — una stringa lunga a caso, per firmare le sessioni
-3. *Actions → Deploy Vacanza Cup → Run workflow*.
+1. **Prima il database.** Su dash.cloudflare.com → *Storage & Databases → D1
+   SQL Database → Create*, chiamalo **`vacanza`**. Copia il **Database ID** e
+   incollalo in `wrangler.toml` al posto di `INCOLLA_QUI_L_ID_DEL_DATABASE`.
+   (Il Database ID non è un segreto: è solo un identificativo.)
+2. **Poi il Worker.** *Compute (Workers) → Create → Import a repository*,
+   scegli il repo e imposta:
+   - **Project name**: `vacanza` (uguale al `name` in `wrangler.toml`)
+   - **Deploy command**: `npx wrangler deploy`
+   - **Path** (in *Advanced settings*): `/vacation-points` — è lì che sta l'app
+   - **Branch di produzione**: quello dove sta il codice
+3. **Le variabili**, con la spunta **Encrypt**:
+   - `ROOM_CODE` — il codice che dite agli altri tre
+   - `AUTH_SECRET` — una stringa lunga a caso
+   Devono essere cifrate: una variabile in chiaro verrebbe sovrascritta a ogni
+   deploy da quelle di `wrangler.toml`.
 
-Il workflow crea il database se non c'è, ci mette lo schema, fa il deploy e
-scrive il link nel riepilogo del run. Senza token non fallisce: dice cosa manca.
+Da lì in poi ogni push sul branch di produzione rifà il deploy da solo. Le
+tabelle non serve crearle: se non ci sono, l'app se le crea alla prima visita.
+
+### In alternativa, con un token e GitHub Actions
+
+Nel repo c'è anche `.github/workflows/deploy-vacanza-cup.yml`, che fa la stessa
+cosa da GitHub: vuole solo il secret `CLOUDFLARE_API_TOKEN` (modello *Edit
+Cloudflare Workers*, con in più **D1 → Edit**). Serve solo se non si usa il
+collegamento diretto di Cloudflare qui sopra.
 
 ## Oppure dal computer (una volta sola, ~5 minuti)
 
@@ -92,11 +104,11 @@ npm install
 npx wrangler login
 
 # 2) crea il database e incolla l'id che ti stampa dentro wrangler.toml,
-#    al posto di INCOLLA_QUI_L_ID_DEL_TUO_D1
-npx wrangler d1 create vacanza-cup
+#    al posto di INCOLLA_QUI_L_ID_DEL_DATABASE
+npx wrangler d1 create vacanza
 
 # 3) crea le tabelle
-npx wrangler d1 execute vacanza-cup --remote --file=./schema.sql
+npx wrangler d1 execute vacanza --remote --file=./schema.sql
 
 # 4) scegli il codice vacanza (meglio come secret che dentro wrangler.toml)
 npx wrangler secret put ROOM_CODE
@@ -109,7 +121,7 @@ npx wrangler deploy
 ```
 
 Alla fine Wrangler stampa l'indirizzo
-(`https://vacanza-cup.<tuo-nome>.workers.dev`): quello è il link da mandare agli
+(`https://vacanza.<tuo-nome>.workers.dev`): quello è il link da mandare agli
 altri tre.
 
 ### Provarlo sul tuo computer

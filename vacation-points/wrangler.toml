@@ -1,4 +1,5 @@
-name = "vacanza-cup"
+# Il nome del Worker deve combaciare con il "Project name" scelto su Cloudflare.
+name = "vacanza"
 main = "src/index.js"
 compatibility_date = "2025-08-01"
 
@@ -7,13 +8,17 @@ compatibility_date = "2025-08-01"
 directory = "./public"
 binding = "ASSETS"
 
-# Crea il database con:  npx wrangler d1 create vacanza-cup
-# poi incolla qui sotto l'id che ti stampa il comando.
+# Il database dei punti. Va creato una volta sola su Cloudflare
+# (Storage & Databases → D1 → Create), chiamandolo "vacanza": poi il suo
+# Database ID va incollato qui sotto. Le tabelle se le crea da sola l'app.
 [[d1_databases]]
 binding = "DB"
-database_name = "vacanza-cup"
-database_id = "INCOLLA_QUI_L_ID_DEL_TUO_D1"
+database_name = "vacanza"
+database_id = "INCOLLA_QUI_L_ID_DEL_DATABASE"
 
-[vars]
-# Il codice per entrare. Cambialo! (oppure usa un secret: npx wrangler secret put ROOM_CODE)
-ROOM_CODE = "vacanza"
+# Il codice per entrare e la chiave che firma le sessioni NON stanno qui:
+# vanno messi come variabili cifrate (Encrypt) nelle impostazioni del Worker,
+# altrimenti ogni deploy li sovrascriverebbe. Se non ci sono, il codice è
+# "vacanza".
+#   ROOM_CODE    — il codice che dite agli altri tre
+#   AUTH_SECRET  — una stringa lunga a caso
