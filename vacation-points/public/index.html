@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#2bb3e8">
+<title>Vacanza Cup — Lido degli Estensi 👑</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E👑%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div class="sky">
+  <div class="sun"></div>
+  <div class="clouds" id="clouds"></div>
+  <div class="sea">
+    <div class="wave w1"></div>
+    <div class="wave w2"></div>
+    <div class="wave w3"></div>
+  </div>
+  <div class="sand"><div class="beach" id="beach"></div></div>
+</div>
+
+<canvas id="fx"></canvas>
+
+<!-- ------------------------------------------------------------- LOGIN -->
+<section id="login" class="screen">
+  <div class="logo">
+    <span class="logo-crown">👑</span>
+    <p class="kicker">⛱ Lido degli Estensi ⛱</p>
+    <h1 class="logo-text">
+      <span class="w">VACANZA</span>
+      <span class="w cup">CUP</span>
+    </h1>
+    <p class="tagline">Chi vince porta la corona</p>
+  </div>
+
+  <form id="login-form" class="card-panel" autocomplete="off">
+    <label class="field-label">Chi sei?</label>
+    <div class="who-grid" id="who-grid"></div>
+
+    <label class="field-label" for="code">Codice vacanza</label>
+    <input id="code" name="code" type="password" inputmode="text" placeholder="••••••••" autocomplete="current-password">
+
+    <button type="submit" class="btn-big" id="login-btn"><span>ENTRA</span></button>
+    <p class="error" id="login-error" role="alert"></p>
+  </form>
+</section>
+
+<!-- -------------------------------------------------------------- GIOCO -->
+<section id="game" class="screen" hidden>
+  <header class="topbar">
+    <div class="brand"><span class="brand-crown">👑</span> VACANZA&nbsp;CUP<small>Lido degli Estensi</small></div>
+    <div class="topbar-right">
+      <span class="me-chip" id="me-chip"></span>
+      <button class="icon-btn" id="sound-btn" title="Audio" aria-label="Attiva o disattiva audio">🔊</button>
+      <button class="icon-btn" id="logout-btn" title="Esci" aria-label="Esci">⏻</button>
+    </div>
+  </header>
+
+  <div class="board-wrap">
+    <div class="crown" id="crown" aria-hidden="true">
+      <div class="crown-inner">👑</div>
+      <div class="crown-shine"></div>
+    </div>
+    <div class="arena" id="board"></div>
+  </div>
+
+  <div class="ticker" id="ticker" aria-live="polite"></div>
+
+  <footer class="footdock">
+    <button class="mini-btn" id="undo-btn">↩︎ Annulla ultimo</button>
+    <button class="mini-btn danger" id="reset-btn">⟲ Azzera tutto</button>
+  </footer>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "vacanza-cup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Point system da vacanza con corona stile Nintendo",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create vacanza-cup",
+    "db:init": "wrangler d1 execute vacanza-cup --remote --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute vacanza-cup --local --file=./schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

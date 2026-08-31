@@ -1,0 +1,19 @@
+name = "vacanza-cup"
+main = "src/index.js"
+compatibility_date = "2025-08-01"
+
+# Il sito (HTML/CSS/JS) viene servito da qui, le API le gestisce il Worker.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Crea il database con:  npx wrangler d1 create vacanza-cup
+# poi incolla qui sotto l'id che ti stampa il comando.
+[[d1_databases]]
+binding = "DB"
+database_name = "vacanza-cup"
+database_id = "INCOLLA_QUI_L_ID_DEL_TUO_D1"
+
+[vars]
+# Il codice per entrare. Cambialo! (oppure usa un secret: npx wrangler secret put ROOM_CODE)
+ROOM_CODE = "vacanza"
