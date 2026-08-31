@@ -11,7 +11,21 @@ const COLORS = {
   Mario: 'var(--p-mario)',
   Greta: 'var(--p-greta)',
 };
-const CONFETTI_HEX = { Emanuele: '#ff5a3d', Serena: '#ff5fa8', Mario: '#1b9fe0', Greta: '#17c79a' };
+// Il testo che va SOPRA il colore (il giallo vuole scritte scure).
+const ON_COLORS = {
+  Emanuele: 'var(--on-emanuele)',
+  Serena: 'var(--on-serena)',
+  Mario: 'var(--on-mario)',
+  Greta: 'var(--on-greta)',
+};
+// La versione scura, per scrivere il nome su fondo chiaro.
+const TEXT_COLORS = {
+  Emanuele: 'var(--t-emanuele)',
+  Serena: 'var(--t-serena)',
+  Mario: 'var(--t-mario)',
+  Greta: 'var(--t-greta)',
+};
+const CONFETTI_HEX = { Emanuele: '#e52521', Serena: '#ffc400', Mario: '#0b6fe8', Greta: '#16a34a' };
 const BEACH_HEX = ['#ffd34d', '#ffffff', '#ff9f4d', '#4fd6f0'];
 
 const SHELL = `
@@ -470,6 +484,7 @@ function makeCol(name) {
   col.className = 'col';
   col.dataset.name = name;
   col.style.setProperty('--c', COLORS[name]);
+  col.style.setProperty('--on', ON_COLORS[name]);
   col.innerHTML = `
     <div class="bar">
       <div class="fill"><div class="cap"></div></div>
@@ -678,7 +693,7 @@ function enterGame(me) {
   $('#login').hidden = true;
   $('#game').hidden = false;
   $('#me-chip').textContent = me;
-  $('#me-chip').style.color = COLORS[me];
+  $('#me-chip').style.color = TEXT_COLORS[me];
   state.booted = false;
   render({ animate: false });
   state.booted = true;
@@ -703,6 +718,7 @@ function wireUp() {
     b.className = 'who' + (name === chosen ? ' on' : '');
     b.textContent = name;
     b.style.setProperty('--c', COLORS[name]);
+    b.style.setProperty('--on', ON_COLORS[name]);
     b.addEventListener('click', () => {
       chosen = name;
       grid.querySelectorAll('.who').forEach((x) => x.classList.toggle('on', x === b));

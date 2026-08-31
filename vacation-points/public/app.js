@@ -10,7 +10,21 @@ const COLORS = {
   Mario: 'var(--p-mario)',
   Greta: 'var(--p-greta)',
 };
-const CONFETTI_HEX = { Emanuele: '#ff5a3d', Serena: '#ff5fa8', Mario: '#1b9fe0', Greta: '#17c79a' };
+// Il testo che va SOPRA il colore (il giallo vuole scritte scure).
+const ON_COLORS = {
+  Emanuele: 'var(--on-emanuele)',
+  Serena: 'var(--on-serena)',
+  Mario: 'var(--on-mario)',
+  Greta: 'var(--on-greta)',
+};
+// La versione scura, per scrivere il nome su fondo chiaro.
+const TEXT_COLORS = {
+  Emanuele: 'var(--t-emanuele)',
+  Serena: 'var(--t-serena)',
+  Mario: 'var(--t-mario)',
+  Greta: 'var(--t-greta)',
+};
+const CONFETTI_HEX = { Emanuele: '#e52521', Serena: '#ffc400', Mario: '#0b6fe8', Greta: '#16a34a' };
 const BEACH_HEX = ['#ffd34d', '#ffffff', '#ff9f4d', '#4fd6f0'];
 
 // Le foto profilo: metti i file in /avatars (vedi avatars/README.txt).
@@ -313,6 +327,7 @@ let chosen = localStorage.getItem('vc_who');
     b.className = 'who' + (name === chosen ? ' on' : '');
     b.textContent = name;
     b.style.setProperty('--c', COLORS[name]);
+    b.style.setProperty('--on', ON_COLORS[name]);
     b.addEventListener('click', () => {
       chosen = name;
       localStorage.setItem('vc_who', name);
@@ -359,6 +374,7 @@ function makeCol(name) {
   col.className = 'col';
   col.dataset.name = name;
   col.style.setProperty('--c', COLORS[name]);
+  col.style.setProperty('--on', ON_COLORS[name]);
   col.innerHTML = `
     <div class="bar">
       <div class="fill"><div class="cap"></div></div>
@@ -645,7 +661,7 @@ async function enterGame(me) {
   $('#login').hidden = true;
   $('#game').hidden = false;
   $('#me-chip').textContent = me;
-  $('#me-chip').style.color = COLORS[me];
+  $('#me-chip').style.color = TEXT_COLORS[me];
 
   const data = await api('/api/state');
   state.booted = false;
@@ -689,12 +705,6 @@ $('#undo-btn').addEventListener('click', async () => {
     }));
     toast(`Annullato: ${last.delta > 0 ? '+1' : '−1'} a ${last.target}`);
   } catch { toast('Non sono riuscito ad annullare'); }
-});
-
-// Scarica tutto il registro: una copia da tenersi da parte.
-$('#backup-btn').addEventListener('click', () => {
-  sfx.click();
-  location.href = '/api/export';
 });
 
 $('#reset-btn').addEventListener('click', async () => {

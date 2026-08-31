@@ -42,8 +42,9 @@ Cosa ci si guadagna:
   ogni volta dallo storico.
 - **"Azzera tutto" non cancella niente.** Scrive una riga di tipo `reset` e la
   somma riparte da lì. Tutto quello che è successo prima resta nel registro.
-- **Il tasto ⤓ Backup** (in fondo alla schermata) scarica l'intero registro in un
-  file JSON: azzeramenti compresi, dal primo punto in poi. Fatelo ogni tanto.
+- **Si può scaricare tutto** aprendo `/api/export` da dentro l'app (da loggati):
+  restituisce l'intero registro in JSON, azzeramenti compresi. Non c'è un tasto
+  apposta, per non appesantire la schermata.
 
 Sotto c'è comunque la rete di Cloudflare: D1 tiene i dati replicati e ha il
 **Time Travel**, che permette di riportare il database a un qualsiasi istante
@@ -59,7 +60,6 @@ degli ultimi 30 giorni (`npx wrangler d1 time-travel restore vacanza-cup
 4. **Annulla ultimo** rimedia all'errore appena fatto (scrive il punto opposto).
    **Azzera tutto** fa ripartire la classifica da zero senza cancellare lo
    storico (richiede il codice vacanza).
-   **⤓ Backup** scarica tutto il registro in un file.
 5. 🔊 accende e spegne i suoni.
 
 ## Metterlo online dal telefono (senza installare niente)
