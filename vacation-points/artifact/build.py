@@ -45,7 +45,7 @@ state = {'v': 0, 'points': {n: 0 for n in PLAYERS}, 'log': []}
 S = 'scr' + 'ipt'
 html = (
     '<title>Vacanza Cup</title>\n'
-    '<style>\n' + css + extra + '</style>\n'
+    '<style id="css">\n' + css + extra + '</style>\n'
     '<div id="root"></div>\n'
     f'<{S} type="application/json" id="state">' + json.dumps(state) + f'</{S}>\n'
     f'<{S} id="app">\n' + app + f'\n</{S}>\n'

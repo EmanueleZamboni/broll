@@ -1,0 +1,123 @@
+name: Deploy Vacanza Cup
+
+# Parte a ogni push sul branch dell'app, oppure a mano dal tab Actions.
+on:
+  push:
+    branches: [claude/vacation-points-system-joeyhd]
+    paths: ['vacation-points/**', '.github/workflows/deploy-vacanza-cup.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vacation-points
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB_NAME: vacanza-cup
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Senza token non si fallisce: si spiega cosa manca e ci si ferma qui.
+      - name: C'è il token Cloudflare?
+        id: check
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Manca il token Cloudflare"
+              echo
+              echo "Aggiungi il secret **CLOUDFLARE_API_TOKEN** in"
+              echo "*Settings → Secrets and variables → Actions → New repository secret*,"
+              echo "poi rilancia questo workflow."
+              echo
+              echo "Facoltativi: \`CLOUDFLARE_ACCOUNT_ID\` (serve se hai più account),"
+              echo "\`ROOM_CODE\` (il codice per entrare) e \`AUTH_SECRET\` (una stringa lunga a caso)."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ok == 'true'
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: vacation-points/package-lock.json
+
+      - run: npm ci
+        if: steps.check.outputs.ok == 'true'
+
+      - name: Crea il database D1 se non c'è, e mettine l'id in wrangler.toml
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          set -euo pipefail
+          find_id() {
+            npx wrangler d1 list --json 2>/dev/null \
+              | jq -r --arg n "$DB_NAME" '.[] | select(.name == $n) | (.uuid // .database_id)' \
+              | head -1
+          }
+          ID="$(find_id)"
+          if [ -z "$ID" ]; then
+            echo "Il database non esiste ancora, lo creo."
+            npx wrangler d1 create "$DB_NAME"
+            ID="$(find_id)"
+          fi
+          if [ -z "$ID" ]; then
+            echo "::error::Non sono riuscito a ottenere l'id del database D1."
+            exit 1
+          fi
+          echo "Database $DB_NAME -> $ID"
+          sed -i "s/INCOLLA_QUI_L_ID_DEL_TUO_D1/$ID/" wrangler.toml
+
+      - name: Crea le tabelle (le istruzioni sono IF NOT EXISTS, si può rilanciare)
+        if: steps.check.outputs.ok == 'true'
+        run: npx wrangler d1 execute "$DB_NAME" --remote --file=./schema.sql
+
+      - name: Se il codice vacanza arriva dai secret, toglilo da wrangler.toml
+        # Un valore in [vars] sovrascriverebbe il secret a ogni deploy.
+        if: steps.check.outputs.ok == 'true' && secrets.ROOM_CODE != ''
+        run: sed -i '/^ROOM_CODE = /d' wrangler.toml
+
+      - name: Deploy
+        if: steps.check.outputs.ok == 'true'
+        id: deploy
+        run: |
+          set -euo pipefail
+          npx wrangler deploy 2>&1 | tee deploy.log
+          URL="$(grep -oE 'https://[a-zA-Z0-9._-]+\.workers\.dev' deploy.log | head -1 || true)"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Imposta i segreti sul Worker
+        if: steps.check.outputs.ok == 'true'
+        env:
+          ROOM_CODE: ${{ secrets.ROOM_CODE }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -n "${ROOM_CODE:-}" ]; then
+            printf '%s' "$ROOM_CODE" | npx wrangler secret put ROOM_CODE
+          else
+            echo "::warning::Nessun secret ROOM_CODE: resta il codice di default 'vacanza'. Cambialo."
+          fi
+          if [ -n "${AUTH_SECRET:-}" ]; then
+            printf '%s' "$AUTH_SECRET" | npx wrangler secret put AUTH_SECRET
+          else
+            echo "::warning::Nessun secret AUTH_SECRET: le sessioni usano una chiave di default."
+          fi
+
+      - name: Scrivi il link nel riepilogo
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          {
+            echo "## 👑 Vacanza Cup è online"
+            echo
+            if [ -n "${{ steps.deploy.outputs.url }}" ]; then
+              echo "**${{ steps.deploy.outputs.url }}**"
+            else
+              echo "Deploy fatto. Il link è nel log dello step \"Deploy\"."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

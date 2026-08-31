@@ -120,8 +120,19 @@ async function loadState() {
 }
 
 function buildDoc(snap) {
-  const css = document.querySelector('style').textContent;
-  const app = document.getElementById('app').textContent;
+  // ATTENZIONE: la piattaforma mette un suo piccolo <style> di reset prima del
+  // nostro. Prendendo il foglio di stile con querySelector('style') si finisce
+  // per ripubblicare quello, e la pagina resta senza grafica (successo davvero).
+  // Quindi: per id, con ripiego sul <style> più lungo, e comunque non si
+  // pubblica niente se quello che troviamo è troppo corto per essere l'app.
+  const styles = Array.from(document.querySelectorAll('style'));
+  const cssEl = document.getElementById('css')
+    || styles.sort((a, b) => b.textContent.length - a.textContent.length)[0];
+  const appEl = document.getElementById('app');
+  const css = cssEl ? cssEl.textContent : '';
+  const app = appEl ? appEl.textContent : '';
+  if (css.length < 5000 || app.length < 5000) return null;
+
   const json = JSON.stringify(snap).replace(/</g, '\\u003c');
   const S = 'scr' + 'ipt';
   return [
@@ -132,7 +143,7 @@ function buildDoc(snap) {
     '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">',
     '<meta name="theme-color" content="#2bb3e8">',
     '<title>Vacanza Cup</title>',
-    '<style>' + css + '</style>',
+    '<style id="css">' + css + '</style>',
     '</head>',
     '<body>',
     '<div id="root"></div>',
@@ -174,8 +185,16 @@ async function persist() {
     if (saveMode === 'files') {
       await art.publish({ 'data/state.json': JSON.stringify(snap) });
     } else {
-      await art.publish(buildDoc(snap));
+      const doc = buildDoc(snap);
+      if (!doc) {
+        saveMode = 'off';
+        note('Salvataggio sospeso: non ritrovo il codice della pagina.');
+        return;
+      }
+      await art.publish(doc);
     }
+    // Se sono arrivati altri punti mentre salvavo, li salvo subito dopo.
+    if (state.v !== snap.v) { savePending = false; return save(); }
   } catch (err) {
     const code = (err && err.code) || 'upstream_error';
     if (code === 'conflict') {
